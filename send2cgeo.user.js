@@ -49,6 +49,32 @@ s.textContent =  '(' + function() {
       });
   };
 
+  window.s2geomulti = function(requested_cnt) {
+      var codeCount = $("[send2cgeo_gccode]").length;
+      console.info("Total count of gccodes:",codeCount);
+      if (codeCount < requested_cnt) {
+           console.info("Not enough gccodes:" + codeCount + " of " + requested_cnt);
+           $('#loadmore').click();
+           setTimeout(function() {
+              s2geomulti(requested_cnt);
+           }, 4000);
+      } else {
+         $("[send2cgeo_gccode]").each(function() {
+           var jqThis=$(this);
+           var code = jqThis.attr('send2cgeo_gccode');
+           console.info('Adding GCCode '+code);
+           $(this).html('<iframe width=120 height=80 src="https://send2.cgeo.org/add.html?cache='+code+'">');
+        });
+      }
+  };
+
+  $('#searchResultsTable').before(
+    '<a href="#" onclick="window.s2geomulti(50); return false;">Send2cgeo: 50</a> '
+       + '<a href="#" onclick="window.s2geomulti(100); return false;">100</a> '
+       + '<a href="#" onclick="window.s2geomulti(200); return false;">200</a> '
+       + '<a href="#" onclick="window.s2geomulti(500); return false;">500</a>'
+  );
+
   // check for premium membership (parts of the page content are different)
   function premiumCheck() {
       var premium;
@@ -81,7 +107,7 @@ s.textContent =  '(' + function() {
 
         var html = '<td class="mobile-show" >'
             + '<a href="https://send2.cgeo.org/add.html?cache=' + GCCode + '" '
-            + 'onclick="window.s2geo(\'' + GCCode + '\'); return false;">'
+            + 'onclick="window.s2geo(\'' + GCCode + '\'); return false;" send2cgeo_gccode="'+GCCode+'">'
             + '<img height="50" src="https://send2.cgeo.org/send2cgeo.png" '
             + 'border="0"> '
             + '</a></td>';
