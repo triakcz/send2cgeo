@@ -19,7 +19,7 @@
 // @downloadURL    https://github.com/cgeo/send2cgeo/raw/release/send2cgeo.user.js
 // @updateURL      https://github.com/cgeo/send2cgeo/raw/release/send2cgeo.user.js
 // @supportURL     https://github.com/cgeo/send2cgeo/issues
-// @version        0.40
+// @version        0.45
 // ==/UserScript==
 
 // Inserts javascript that will be called by the s2cgeo button. The closure
@@ -48,31 +48,60 @@ s.textContent =  '(' + function() {
         $(this).css('display', 'block').parent().delay(3000).fadeOut();
       });
   };
-
-  window.s2geomulti = function(requested_cnt) {
-      var codeCount = $("[send2cgeo_gccode]").length;
-      console.info("Total count of gccodes:",codeCount);
-      if (codeCount < requested_cnt) {
-           console.info("Not enough gccodes:" + codeCount + " of " + requested_cnt);
-           $('#loadmore').click();
-           setTimeout(function() {
-              s2geomulti(requested_cnt);
-           }, 4000);
+  function s2cgeoProgressReport(message,append) {
+      if (append) {
+          $("#send2cgeo_controls_div").append(message);
       } else {
-         $("[send2cgeo_gccode]").each(function() {
-           var jqThis=$(this);
-           var code = jqThis.attr('send2cgeo_gccode');
-           console.info('Adding GCCode '+code);
-           $(this).html('<iframe width=120 height=80 src="https://send2.cgeo.org/add.html?cache='+code+'">');
-        });
+          $("#send2cgeo_controls_div").html(message);
       }
   };
 
-  $('#searchResultsTable').before(
-    '<a href="#" onclick="window.s2geomulti(50); return false;">Send2cgeo: 50</a> '
-       + '<a href="#" onclick="window.s2geomulti(100); return false;">100</a> '
-       + '<a href="#" onclick="window.s2geomulti(200); return false;">200</a> '
-       + '<a href="#" onclick="window.s2geomulti(500); return false;">500</a>'
+  window.s2geomulti = function(requestedCnt,skipFound,moreClicked) {
+      if ( typeof(skipFound) == "undefined" ) {
+          skipFound = $("#send2cgeo_skip_found").is(":checked");
+      }
+      var alreadySent = $("[send2cgeo_sent]").length;
+      if ( alreadySent < requestedCnt) {
+          var toAddIframe = $("[send2cgeo_gccode]").not("[send2cgeo_sent]").first();
+          if (toAddIframe.length) {
+              if (skipFound) {
+                  if (toAddIframe.parent().parent().find('use[xlink\\:href*=#icon-found]').length == 0) {
+                      var code = toAddIframe.attr("send2cgeo_gccode");
+                      toAddIframe.html("<iframe width=120 height=80 src=\"https://send2.cgeo.org/add.html?cache="+code+"\">");
+                      toAddIframe.attr('send2cgeo_sent','1');
+                      s2cgeoProgressReport((alreadySent+1)+" ",alreadySent!=0);
+                  } else {
+                      var trToDel = toAddIframe.parent().parent();
+                      trToDel.remove();
+                      s2cgeoProgressReport(".",alreadySent!=0);
+                  }
+              }
+              setTimeout(function() {
+                  s2geomulti(requestedCnt, skipFound, false);
+              }, 100);
+          } else {
+              if (!moreClicked) {
+                  s2cgeoProgressReport('Waiting to load more caches from web site, sent '+alreadySent+" caches.",false);
+                  var loadMoreBtn = $("#loadmore");
+                  loadMoreBtn.click();
+                  moreClicked=true;
+              }
+              s2cgeoProgressReport('.',true);
+              setTimeout(function() {
+                  s2geomulti(requestedCnt, skipFound, moreClicked);
+              }, 2000);
+          }
+      } else {
+          s2cgeoProgressReport("Finished after sending "+alreadySent+" caches.");
+      }
+  };
+
+  $("#searchResultsTable").before(
+    "<div id='send2cgeo_controls_div'><a href=\"#\" onclick=\"window.s2geomulti(50); return false;\">Send2cgeo: 50</a> "
+       + "<a href=\"#\" onclick=\"window.s2geomulti(100); return false;\">100</a> "
+       + "<a href=\"#\" onclick=\"window.s2geomulti(200); return false;\">200</a> "
+       + "<a href=\"#\" onclick=\"window.s2geomulti(500); return false;\">500</a> "
+       + "<label><input checked='true' style='display:block' type='checkbox' id='send2cgeo_skip_found' name='send2cgeo_skipt_found'><span class=\"label\">Skip found caches</span></label></div>"
   );
 
   // check for premium membership (parts of the page content are different)
